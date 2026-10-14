@@ -4,6 +4,8 @@
 #include <hyprgraphics/resource/resources/ImageResource.hpp>
 #include <hyprtoolkit/system/Icons.hpp>
 
+#include <limits>
+
 using namespace Hyprtoolkit;
 
 class CDummyIcon final : public ISystemIconDescription {
@@ -71,4 +73,26 @@ TEST(Element, imageRecognizesScalablePaths) {
 
     image.data.path = "image.svg";
     EXPECT_TRUE(image.scalable());
+}
+
+TEST(Element, imagePixelBufferValidation) {
+    std::vector<uint8_t> pixels(4 * 3 * 4);
+
+    EXPECT_TRUE(SImageImpl::pixelBufferValid(pixels, {4, 3}));
+    EXPECT_TRUE(SImageImpl::pixelBufferValid(pixels, {2, 2}));
+    EXPECT_FALSE(SImageImpl::pixelBufferValid(pixels, {4, 4}));
+    EXPECT_FALSE(SImageImpl::pixelBufferValid(pixels, {0, 3}));
+    EXPECT_FALSE(SImageImpl::pixelBufferValid(pixels, {-4, 3}));
+    EXPECT_FALSE(SImageImpl::pixelBufferValid(pixels, {2.5, 2.0}));
+    EXPECT_FALSE(SImageImpl::pixelBufferValid({}, {1, 1}));
+
+    // sizes a broken decoder could produce must not overflow the byte count
+    constexpr auto INF  = std::numeric_limits<double>::infinity();
+    constexpr auto QNAN = std::numeric_limits<double>::quiet_NaN();
+    EXPECT_FALSE(SImageImpl::pixelBufferValid(pixels, {INF, 1.0}));
+    EXPECT_FALSE(SImageImpl::pixelBufferValid(pixels, {1.0, INF}));
+    EXPECT_FALSE(SImageImpl::pixelBufferValid(pixels, {QNAN, 1.0}));
+    EXPECT_FALSE(SImageImpl::pixelBufferValid(pixels, {1.0, QNAN}));
+    EXPECT_FALSE(SImageImpl::pixelBufferValid(pixels, {1e300, 1e300}));
+    EXPECT_FALSE(SImageImpl::pixelBufferValid(pixels, {4294967296.0, 4294967296.0}));
 }

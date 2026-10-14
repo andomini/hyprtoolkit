@@ -1028,6 +1028,18 @@ SP<IRendererTexture> COpenGLRenderer::uploadTexture(const STextureData& data) {
     return TEX;
 }
 
+SP<IRendererTexture> COpenGLRenderer::uploadPixels(const SP<IRendererTexture>& reuse, const SPixelData& data) {
+    SP<CGLTexture> tex = reuse && reuse->type() == IRendererTexture::TEXTURE_GL ? reinterpretPointerCast<CGLTexture>(reuse) : nullptr;
+    if (!tex) {
+        tex = makeShared<CGLTexture>();
+        registerTexture(tex);
+    }
+
+    tex->m_fitMode = data.fitMode;
+    tex->uploadPixels(tex, data.pixels, data.size);
+    return tex;
+}
+
 static CBox containImage(const CBox& requested, const Vector2D& imageSize) {
     const auto SOURCE_ASPECT_RATIO = requested.w / requested.h;
     const auto IMAGE_ASPECT_RATIO  = imageSize.x / imageSize.y;

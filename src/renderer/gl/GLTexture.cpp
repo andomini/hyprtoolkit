@@ -82,6 +82,42 @@ void CGLTexture::upload() {
     m_resource.reset();
 }
 
+void CGLTexture::uploadPixels(WP<CGLTexture> self, std::span<const uint8_t> pixels, const Vector2D& size) {
+    if (g_openGL && g_openGL->m_borrowedContext && !g_openGL->m_window) {
+        // the span may not outlive this call, keep a copy until the context is ours
+        g_openGL->enqueueGL([self, copy = std::vector<uint8_t>{pixels.begin(), pixels.end()}, size] {
+            if (const auto locked = self.lock())
+                locked->uploadPixelsNow(copy, size);
+        });
+        return;
+    }
+
+    if (g_openGL)
+        g_openGL->makeEGLCurrent();
+    uploadPixelsNow(pixels, size);
+}
+
+void CGLTexture::uploadPixelsNow(std::span<const uint8_t> pixels, const Vector2D& size) {
+    const bool REALLOCATE = !m_allocated || m_type != TEXTURE_RGBA || m_size != size;
+
+    allocate();
+    m_type = TEXTURE_RGBA;
+    m_size = size;
+
+    GLCALL(glBindTexture(GL_TEXTURE_2D, m_texID));
+
+    if (!REALLOCATE) {
+        GLCALL(glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_size.x, m_size.y, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data()));
+        return;
+    }
+
+    GLCALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+    GLCALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+    GLCALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_BLUE));
+    GLCALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED));
+    GLCALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_size.x, m_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data()));
+}
+
 size_t CGLTexture::id() {
     return m_texID;
 }

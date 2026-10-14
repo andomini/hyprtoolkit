@@ -193,6 +193,10 @@ if(BUILD_TESTING)
   target_link_libraries(simpleLayer PRIVATE PkgConfig::deps hyprtoolkit)
   add_dependencies(tests simpleLayer)
 
+  add_executable(animatedImage "tests/AnimatedImage.cpp")
+  target_link_libraries(animatedImage PRIVATE PkgConfig::deps hyprtoolkit)
+  add_dependencies(tests animatedImage)
+
   # GTest
   find_package(GTest CONFIG REQUIRED)
   include(GoogleTest)

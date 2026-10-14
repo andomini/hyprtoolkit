@@ -12,6 +12,8 @@
 
 #include "Polygon.hpp"
 
+#include <span>
+
 using namespace Hyprutils::Math;
 using namespace Hyprgraphics;
 
@@ -34,6 +36,12 @@ namespace Hyprtoolkit {
         struct STextureData {
             ASP<Hyprgraphics::IAsyncResource> resource;
             eImageFitMode                     fitMode = IMAGE_FIT_MODE_STRETCH;
+        };
+
+        struct SPixelData {
+            std::span<const uint8_t> pixels; // ARGB32, tightly packed
+            Vector2D                 size;
+            eImageFitMode            fitMode = IMAGE_FIT_MODE_STRETCH;
         };
 
         struct STextureRenderData {
@@ -82,6 +90,9 @@ namespace Hyprtoolkit {
         virtual bool                 explicitSyncSupported() = 0;
 
         virtual int                  getMaxTextureSize() = 0;
+
+        // updates reuse in place when possible, otherwise returns a new texture
+        virtual SP<IRendererTexture> uploadPixels(const SP<IRendererTexture>& reuse, const SPixelData& data) = 0;
     };
 
     inline SP<IRenderer> g_renderer;

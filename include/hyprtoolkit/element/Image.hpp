@@ -7,6 +7,8 @@
 #include <hyprgraphics/resource/AsyncResourceGatherer.hpp>
 #include <hyprgraphics/resource/resources/ImageResource.hpp>
 
+#include <span>
+
 namespace Hyprtoolkit {
 
     class IRendererTexture;
@@ -47,6 +49,16 @@ namespace Hyprtoolkit {
 
         Hyprutils::Memory::CSharedPointer<CImageBuilder> rebuild();
         virtual Hyprutils::Math::Vector2D                size();
+
+        /*
+            Display raw pixels instead of the configured path / icon / data, without decoding or caching.
+            pixels must be tightly packed CAIRO_FORMAT_ARGB32 (premultiplied, native-endian), size.x * size.y * 4 bytes.
+            The texture is reused while the size stays the same, so this is cheap enough to call every frame (e.g. animations).
+            rebuild()->...->commence() drops the pixels and goes back to the configured source.
+            Returns false and changes nothing if the buffer is smaller than size needs, size is not a positive
+            integer vector, or it exceeds the renderer's maximum texture size.
+        */
+        bool setPixels(std::span<const uint8_t> pixels, const Hyprutils::Math::Vector2D& size);
 
       private:
         CImageElement(const SImageData& data);

@@ -37,6 +37,7 @@ namespace Hyprtoolkit {
         virtual void                 endRendering();
         virtual void                 renderRectangle(const SRectangleRenderData& data);
         virtual SP<IRendererTexture> uploadTexture(const STextureData& data);
+        virtual SP<IRendererTexture> uploadPixels(const SP<IRendererTexture>& reuse, const SPixelData& data);
         virtual void                 renderTexture(const STextureRenderData& data);
         virtual void                 renderBorder(const SBorderRenderData& data);
         virtual void                 renderPolygon(const SPolygonRenderData& data);

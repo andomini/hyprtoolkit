@@ -6,6 +6,7 @@
 #include "GL.hpp"
 
 #include <cstdint>
+#include <span>
 
 #include "../RendererTexture.hpp"
 #include "../../helpers/Memory.hpp"
@@ -49,6 +50,8 @@ namespace Hyprtoolkit {
         WP<SBackendLifetime>              m_lifetime;
 
         void                              upload();
+        void                              uploadPixels(WP<CGLTexture> self, std::span<const uint8_t> pixels, const Hyprutils::Math::Vector2D& size);
+        void                              uploadPixelsNow(std::span<const uint8_t> pixels, const Hyprutils::Math::Vector2D& size);
         void                              uploadOnContext(WP<CGLTexture> self);
         void                              releaseFromRenderer();
         void                              allocate();

@@ -1,5 +1,7 @@
 #include "Image.hpp"
 
+#include <cmath>
+
 #include "../../layout/Positioner.hpp"
 #include "../../renderer/Renderer.hpp"
 #include "../../core/InternalBackend.hpp"
@@ -25,6 +27,16 @@ CImageElement::CImageElement(const SImageData& data) : IElement(), m_impl(makeUn
 }
 
 void CImageElement::paint() {
+    if (m_impl->pixelTex) {
+        g_renderer->renderTexture({
+            .box      = impl->position,
+            .texture  = m_impl->pixelTex,
+            .a        = m_impl->data.a,
+            .rounding = m_impl->data.rounding,
+        });
+        return;
+    }
+
     if (m_impl->failed)
         return;
 
@@ -221,11 +233,56 @@ SP<CImageBuilder> CImageElement::rebuild() {
 
 void CImageElement::replaceData(const SImageData& data) {
     m_impl->data = data;
+    m_impl->pixelTex.reset();
 
     renderTex();
 
     if (impl->window)
         impl->window->scheduleReposition(impl->self);
+}
+
+bool SImageImpl::pixelBufferValid(std::span<const uint8_t> pixels, const Vector2D& size) {
+    if (!std::isfinite(size.x) || !std::isfinite(size.y) || size.x < 1 || size.y < 1 || size.x != std::floor(size.x) || size.y != std::floor(size.y))
+        return false;
+
+    // compared as doubles: an absurd size can't overflow, it just fails
+    return sc<double>(pixels.size()) >= size.x * size.y * 4;
+}
+
+bool CImageElement::setPixels(std::span<const uint8_t> pixels, const Vector2D& size) {
+    if (!g_renderer)
+        return false;
+
+    if (!SImageImpl::pixelBufferValid(pixels, size)) {
+        g_logger->log(HT_LOG_ERROR, "Image: setPixels got {} bytes for a {}x{} image, ignoring", pixels.size(), size.x, size.y);
+        return false;
+    }
+
+    const auto MAX_SIZE = g_renderer->getMaxTextureSize();
+    if (size.x > MAX_SIZE || size.y > MAX_SIZE) {
+        g_logger->log(HT_LOG_ERROR, "Image: setPixels dimensions {}x{} exceed max texture size {}", size.x, size.y, MAX_SIZE);
+        return false;
+    }
+
+    // invalidate in-flight loads so they don't replace the pixels when they finish
+    ++m_impl->requestGeneration;
+    m_impl->listeners.cacheEntryDone.reset();
+    m_impl->waitingForTex = false;
+    m_impl->failed        = false;
+    m_impl->cacheEntry.reset();
+    m_impl->oldCacheEntry.reset();
+
+    const bool RESIZED = m_impl->size != size;
+
+    m_impl->pixelTex = g_renderer->uploadPixels(m_impl->pixelTex, {.pixels = pixels, .size = size, .fitMode = m_impl->data.fitMode});
+    m_impl->size     = size;
+
+    impl->damageEntire();
+
+    if (RESIZED && impl->window)
+        impl->window->scheduleReposition(impl->self);
+
+    return true;
 }
 
 void CImageElement::reposition(const Hyprutils::Math::CBox& box, const Hyprutils::Math::Vector2D& maxSize) {

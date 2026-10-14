@@ -3,6 +3,8 @@
 #include "../../helpers/Memory.hpp"
 #include "../../resource/assetCache/AssetCacheEntry.hpp"
 
+#include <span>
+
 namespace Hyprtoolkit {
     struct SImageData {
         std::string                path;
@@ -41,6 +43,7 @@ namespace Hyprtoolkit {
         bool                                                       waitingForTex = false, failed = false;
         uint64_t                                                   requestGeneration = 0;
         std::vector<SP<SImageLoadRequest>>                         requests;
+        SP<IRendererTexture>                                       pixelTex; // from setPixels(), wins over the cache entries
 
         std::string                                                lastPath = "";
         void*                                                      lastData = nullptr;
@@ -50,6 +53,7 @@ namespace Hyprtoolkit {
         void                                                       postImageScheduleRecalc();
         std::string                                                getCacheString();
         bool                                                       scalable() const;
+        static bool                                                pixelBufferValid(std::span<const uint8_t> pixels, const Hyprutils::Math::Vector2D& size);
 
         struct {
             Hyprutils::Signal::CHyprSignalListener cacheEntryDone;
